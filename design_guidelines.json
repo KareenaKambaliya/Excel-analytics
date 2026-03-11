@@ -1,0 +1,147 @@
+{
+  "identity": {
+    "name": "E1: The Anti-AI Designer",
+    "core_principles": [
+      "Fusion over Imitation: Mix disparate disciplines.",
+      "Emotion First: Every design decision maps to a feeling.",
+      "Content is King: Tell a story with data.",
+      "Zoom In: Bold focus on essential metrics.",
+      "Negative Space: Value empty areas.",
+      "Contrast: High contrast for clarity."
+    ],
+    "hall_of_shame": [
+      "Purple/Teal for CTA (Use Indigo or Monochrome instead).",
+      "Inter everywhere (Use Chivo for headings).",
+      "Centered layouts (Use asymmetric grids).",
+      "Gradient overload (Use solid colors or subtle noise)."
+    ]
+  },
+  "design_system": {
+    "theme": "Swiss Utility",
+    "typography": {
+      "headings": {
+        "font_family": "Chivo, sans-serif",
+        "weights": ["300", "900"],
+        "tracking": "tracking-tight",
+        "usage": "Use for all page titles and section headers. Don't be afraid of large sizes (text-4xl+)."
+      },
+      "body": {
+        "font_family": "Inter, sans-serif",
+        "weights": ["400", "500"],
+        "tracking": "tracking-normal",
+        "usage": "Use for general text, labels, and descriptions."
+      },
+      "data": {
+        "font_family": "JetBrains Mono, monospace",
+        "weights": ["500"],
+        "tracking": "tracking-wide",
+        "usage": "MANDATORY for all numbers, metrics, chart axes, and tabular data."
+      }
+    },
+    "colors": {
+      "palette": {
+        "background": "#FFFFFF",
+        "foreground": "#09090B",
+        "primary": "#4F46E5",
+        "primary_foreground": "#FFFFFF",
+        "secondary": "#F4F4F5",
+        "secondary_foreground": "#18181B",
+        "muted": "#F4F4F5",
+        "muted_foreground": "#71717A",
+        "accent": "#F4F4F5",
+        "accent_foreground": "#18181B",
+        "destructive": "#EF4444",
+        "destructive_foreground": "#FFFFFF",
+        "border": "#E4E4E7",
+        "input": "#E4E4E7",
+        "ring": "#4F46E5"
+      },
+      "charts": [
+        "#4F46E5",
+        "#10B981",
+        "#F59E0B",
+        "#EC4899",
+        "#0EA5E9"
+      ],
+      "rules": [
+        "Never use pure black (#000000). Use Zinc-950 (#09090B).",
+        "Charts must have high contrast against the white background.",
+        "Hover states must be explicit (e.g., hover:border-primary)."
+      ]
+    },
+    "layout": {
+      "grid_strategy": "Bento Grid Mode B (High Density)",
+      "spacing_scale": ["p-6", "p-8", "gap-6"],
+      "container_padding": "p-6 md:p-8 lg:p-12",
+      "border_radius": "rounded-none md:rounded-sm"
+    },
+    "surfaces": {
+      "cards": "bg-white border border-zinc-200 shadow-sm hover:shadow-md transition-all duration-200",
+      "header": "sticky top-0 z-50 w-full border-b border-zinc-200 bg-white/80 backdrop-blur-xl",
+      "dashboard_container": "min-h-screen bg-zinc-50/50"
+    }
+  },
+  "components": {
+    "ui_library": "shadcn/ui",
+    "icons": "lucide-react",
+    "charts": "recharts",
+    "custom_instructions": {
+      "upload_zone": {
+        "style": "border-2 border-dashed border-zinc-300 hover:border-primary/50 bg-zinc-50/50 hover:bg-zinc-50 transition-colors cursor-pointer rounded-lg p-12 text-center",
+        "animation": "Use a subtle pulse animation on hover.",
+        "content": "Include a large icon (UploadCloud) and clear instructions."
+      },
+      "metric_card": {
+        "style": "bg-white p-6 border border-zinc-200 shadow-sm flex flex-col justify-between h-full",
+        "typography": "Label: text-sm font-medium text-zinc-500. Value: text-3xl font-bold font-mono tracking-tighter text-zinc-900."
+      },
+      "chart_container": {
+        "style": "bg-white p-6 border border-zinc-200 shadow-sm rounded-lg",
+        "header": "mb-6 flex items-center justify-between"
+      },
+      "filters": {
+        "style": "flex flex-wrap gap-4 items-center bg-white p-4 border-b border-zinc-200 sticky top-16 z-40",
+        "inputs": "Use Shadcn Select and DatePicker. Customize to remove default rounded-md if going for a sharper look."
+      }
+    }
+  },
+  "pages": {
+    "landing": {
+      "layout": "Centered hero section with a large drop zone.",
+      "background_image": "https://images.unsplash.com/photo-1589628893686-70e3080c8e53?crop=entropy&cs=srgb&fm=jpg&ixid=M3w4NjA2MjJ8MHwxfHNlYXJjaHwzfHxhYnN0cmFjdCUyMG1pbmltYWxpc3QlMjB3aGl0ZSUyMGdlb21ldHJpYyUyMHNoYXBlcyUyMHN3aXNzJTIwZGVzaWdufGVufDB8fHx8MTc3MzIzMTQzMnww&ixlib=rb-4.1.0&q=85",
+      "background_style": "absolute inset-0 z-[-1] opacity-[0.03] grayscale bg-cover bg-center",
+      "headline": "Unlock Your Excel Data.",
+      "subheadline": "Instant visualization. No signup required. purely client-side."
+    },
+    "dashboard": {
+      "layout": "Grid layout with summary cards at top, followed by main timeline chart, then category charts.",
+      "empty_state": "If no file is uploaded, redirect to landing or show a fullscreen empty state with a 'Load Demo Data' button."
+    }
+  },
+  "universal_guidelines": [
+    "You tend to converge toward generic outputs. Avoid this.",
+    "Do not use dark colors as gradients.",
+    "Create depth through layered design elements.",
+    "Use glass-morphism effects with backdrop filters (12-24px blur) for sticky headers.",
+    "Do not center align the app container.",
+    "Always use modern button styles (sharp or pill-shaped).",
+    "NEVER use AI assistant Emoji characters.",
+    "Every interaction needs micro-animations.",
+    "Use 2-3x more spacing than feels comfortable.",
+    "All interactive elements MUST include data-testid attribute.",
+    "Use sonner for toasts.",
+    "Components MUST use named exports.",
+    "Pages MUST use default exports."
+  ],
+  "implementation_steps": [
+    "1. Setup Tailwind Colors & Fonts (Chivo, Inter, JetBrains Mono).",
+    "2. Create the Layout Shell (Header, Main Container).",
+    "3. Build the 'UploadZone' component with drag-and-drop logic.",
+    "4. Implement 'ExcelParser' utility using xlsx.",
+    "5. Create 'DashboardLayout' with a responsive grid.",
+    "6. Build 'MetricCard' and 'ChartCard' components.",
+    "7. Integrate Recharts with the parsed data.",
+    "8. Add 'FilterBar' with DateRangePicker and Attribute Select.",
+    "9. Polish with animations and empty states."
+  ]
+}
