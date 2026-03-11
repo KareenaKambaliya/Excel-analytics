@@ -83,7 +83,7 @@ export const FilterBar = ({
                 {startDate ? format(startDate, "MMM dd, yyyy") : "Start date"}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
+            <PopoverContent className="w-auto p-0 z-[100]" align="start">
               <Calendar
                 mode="single"
                 selected={startDate}
@@ -112,7 +112,7 @@ export const FilterBar = ({
                 {endDate ? format(endDate, "MMM dd, yyyy") : "End date"}
               </Button>
             </PopoverTrigger>
-            <PopoverContent className="w-auto p-0" align="start">
+            <PopoverContent className="w-auto p-0 z-[100]" align="start">
               <Calendar
                 mode="single"
                 selected={endDate}
