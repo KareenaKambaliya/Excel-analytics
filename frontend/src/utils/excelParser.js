@@ -66,6 +66,169 @@ export const parseExcelFile = (file) => {
   });
 };
 
+
+/**
+ * Comprehensive date format patterns
+ * Supports: ISO, US, European, Asian, and various common formats
+ */
+const DATE_PATTERNS = [
+  // ISO formats
+  /^\d{4}-\d{2}-\d{2}$/,                          // 2024-01-15
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}/,         // 2024-01-15T10:30:00
+  /^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}/,         // 2024-01-15 10:30:00
+  /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}/,               // 2024-01-15T10:30
+  
+  // US formats (MM/DD/YYYY, MM-DD-YYYY)
+  /^\d{1,2}\/\d{1,2}\/\d{4}$/,                    // 1/15/2024 or 01/15/2024
+  /^\d{1,2}\/\d{1,2}\/\d{2}$/,                    // 1/15/24 or 01/15/24
+  /^\d{1,2}-\d{1,2}-\d{4}$/,                      // 1-15-2024 or 01-15-2024
+  /^\d{1,2}-\d{1,2}-\d{2}$/,                      // 1-15-24 or 01-15-24
+  
+  // European formats (DD/MM/YYYY, DD-MM-YYYY, DD.MM.YYYY)
+  /^\d{2}\/\d{2}\/\d{4}$/,                        // 15/01/2024
+  /^\d{2}-\d{2}-\d{4}$/,                          // 15-01-2024
+  /^\d{2}\.\d{2}\.\d{4}$/,                        // 15.01.2024
+  /^\d{2}\.\d{2}\.\d{2}$/,                        // 15.01.24
+  
+  // Asian formats (YYYY/MM/DD, YYYY.MM.DD)
+  /^\d{4}\/\d{2}\/\d{2}$/,                        // 2024/01/15
+  /^\d{4}\.\d{2}\.\d{2}$/,                        // 2024.01.15
+  
+  // Text month formats
+  /^\d{1,2}\s+(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{4}$/i,  // 15 Jan 2024, 15 January 2024
+  /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2},?\s+\d{4}$/i, // Jan 15, 2024 or January 15 2024
+  /^(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)[a-z]*\s+\d{1,2}$/i,           // Jan 15 (year implied)
+  /^\d{1,2}-(Jan|Feb|Mar|Apr|May|Jun|Jul|Aug|Sep|Oct|Nov|Dec)-\d{2,4}$/i,           // 15-Jan-2024 or 15-Jan-24
+  
+  // Excel serial date (5-digit number representing days since 1900)
+  /^4\d{4}$/,                                     // Excel dates around 2010-2030
+  /^3\d{4}$/,                                     // Excel dates around 1982-2009
+  
+  // Timestamp formats
+  /^\d{10}$/,                                     // Unix timestamp (seconds)
+  /^\d{13}$/,                                     // Unix timestamp (milliseconds)
+  
+  // With time
+  /^\d{1,2}\/\d{1,2}\/\d{4}\s+\d{1,2}:\d{2}/,    // 01/15/2024 10:30
+  /^\d{1,2}-\d{1,2}-\d{4}\s+\d{1,2}:\d{2}/,      // 01-15-2024 10:30
+];
+
+/**
+ * Check if a value is a date
+ * @param {*} value - Value to check
+ * @returns {boolean}
+ */
+const isDateValue = (value) => {
+  if (value === null || value === undefined || value === '') return false;
+  
+  const str = String(value).trim();
+  
+  // Check against patterns
+  if (DATE_PATTERNS.some(p => p.test(str))) return true;
+  
+  // Check Excel serial date (number between reasonable date range)
+  const num = parseFloat(str);
+  if (!isNaN(num) && num > 1 && num < 2958465) { // 1900 to 9999
+    // Only consider 5-digit numbers as potential Excel dates
+    if (/^\d{5}$/.test(str)) return true;
+  }
+  
+  // Try native Date parsing as fallback (but be strict)
+  if (str.length >= 6 && str.length <= 30) {
+    const parsed = Date.parse(str);
+    if (!isNaN(parsed)) {
+      const date = new Date(parsed);
+      // Verify it's a reasonable date (1900-2100)
+      const year = date.getFullYear();
+      if (year >= 1900 && year <= 2100) return true;
+    }
+  }
+  
+  return false;
+};
+
+/**
+ * Parse a date value to JavaScript Date object
+ * @param {*} value - Value to parse
+ * @returns {Date|null}
+ */
+const parseDate = (value) => {
+  if (value === null || value === undefined || value === '') return null;
+  
+  // If already a Date object
+  if (value instanceof Date) return value;
+  
+  const str = String(value).trim();
+  
+  // Excel serial date (days since 1900-01-01, with Excel's leap year bug)
+  if (/^\d{5}$/.test(str)) {
+    const num = parseFloat(str);
+    if (num > 1 && num < 2958465) {
+      // Excel incorrectly considers 1900 a leap year, so subtract 1 for dates after Feb 28, 1900
+      const excelEpoch = new Date(1899, 11, 30); // Dec 30, 1899
+      const date = new Date(excelEpoch.getTime() + num * 24 * 60 * 60 * 1000);
+      return date;
+    }
+  }
+  
+  // Unix timestamp (seconds)
+  if (/^\d{10}$/.test(str)) {
+    return new Date(parseInt(str) * 1000);
+  }
+  
+  // Unix timestamp (milliseconds)
+  if (/^\d{13}$/.test(str)) {
+    return new Date(parseInt(str));
+  }
+  
+  // Handle DD/MM/YYYY vs MM/DD/YYYY ambiguity
+  // If first number > 12, it's likely DD/MM/YYYY (European)
+  const slashMatch = str.match(/^(\d{1,2})\/(\d{1,2})\/(\d{2,4})$/);
+  if (slashMatch) {
+    const [, first, second, year] = slashMatch;
+    const fullYear = year.length === 2 ? (parseInt(year) > 50 ? 1900 + parseInt(year) : 2000 + parseInt(year)) : parseInt(year);
+    
+    if (parseInt(first) > 12) {
+      // DD/MM/YYYY format
+      return new Date(fullYear, parseInt(second) - 1, parseInt(first));
+    } else if (parseInt(second) > 12) {
+      // MM/DD/YYYY format
+      return new Date(fullYear, parseInt(first) - 1, parseInt(second));
+    }
+    // Ambiguous - default to MM/DD/YYYY (US format)
+    return new Date(fullYear, parseInt(first) - 1, parseInt(second));
+  }
+  
+  // Handle DD-MM-YYYY format
+  const dashMatch = str.match(/^(\d{1,2})-(\d{1,2})-(\d{2,4})$/);
+  if (dashMatch) {
+    const [, first, second, year] = dashMatch;
+    const fullYear = year.length === 2 ? (parseInt(year) > 50 ? 1900 + parseInt(year) : 2000 + parseInt(year)) : parseInt(year);
+    
+    if (parseInt(first) > 12) {
+      return new Date(fullYear, parseInt(second) - 1, parseInt(first));
+    }
+    return new Date(fullYear, parseInt(first) - 1, parseInt(second));
+  }
+  
+  // Handle DD.MM.YYYY format (common in Europe)
+  const dotMatch = str.match(/^(\d{1,2})\.(\d{1,2})\.(\d{2,4})$/);
+  if (dotMatch) {
+    const [, day, month, year] = dotMatch;
+    const fullYear = year.length === 2 ? (parseInt(year) > 50 ? 1900 + parseInt(year) : 2000 + parseInt(year)) : parseInt(year);
+    return new Date(fullYear, parseInt(month) - 1, parseInt(day));
+  }
+  
+  // Try native Date parsing
+  const parsed = Date.parse(str);
+  if (!isNaN(parsed)) {
+    return new Date(parsed);
+  }
+  
+  return null;
+};
+
+
 /**
  * Analyze columns to determine their types
  * @param {Array} headers - Column headers
@@ -114,7 +277,7 @@ const detectColumnType = (values, header = '') => {
   const headerLower = header.toLowerCase();
   
   // Check header hints for dates
-  const dateKeywords = ['date', 'time', 'at', 'submitted', 'created', 'updated', 'timestamp'];
+  const dateKeywords = ['date', 'time', 'at', 'submitted', 'created', 'updated', 'timestamp', 'dob', 'birth', 'joined', 'start', 'end', 'due', 'expir'];
   const isDateHeader = dateKeywords.some(kw => headerLower.includes(kw));
   
   // Check for numeric
@@ -125,18 +288,8 @@ const detectColumnType = (values, header = '') => {
   
   if (numericCount / sampleSize > 0.8) return 'numeric';
   
-  // Check for date
-  const dateCount = sample.filter(v => {
-    const datePatterns = [
-      /^\d{4}-\d{2}-\d{2}$/,
-      /^\d{2}\/\d{2}\/\d{4}$/,
-      /^\d{2}-\d{2}-\d{4}$/,
-      /^\d{1,2}\/\d{1,2}\/\d{2,4}$/,
-      /^\d{4}-\d{2}-\d{2}T/  // ISO format
-    ];
-    const str = String(v);
-    return datePatterns.some(p => p.test(str)) || (!isNaN(Date.parse(str)) && str.length > 6);
-  }).length;
+  // Check for date with comprehensive pattern matching
+  const dateCount = sample.filter(v => isDateValue(v)).length;
   
   if (dateCount / sampleSize > 0.5 || (isDateHeader && dateCount > 0)) return 'date';
   
@@ -169,12 +322,19 @@ const detectColumnType = (values, header = '') => {
 export const filterByDateRange = (data, dateColumn, startDate, endDate) => {
   if (!dateColumn || !startDate || !endDate) return data;
   
+  // Normalize start and end dates to beginning/end of day
+  const start = new Date(startDate);
+  start.setHours(0, 0, 0, 0);
+  
+  const end = new Date(endDate);
+  end.setHours(23, 59, 59, 999);
+  
   return data.filter(row => {
     const dateValue = row[dateColumn];
     if (!dateValue) return false;
     
-    const date = new Date(dateValue);
-    if (isNaN(date.getTime())) return false;
+    const date = parseDate(dateValue);
+    if (!date || isNaN(date.getTime())) return false;
     
     return date >= startDate && date <= endDate;
   });
@@ -334,8 +494,8 @@ export const prepareTimeSeriesData = (data, dateColumn, valueColumn, groupBy = n
     const dateValue = row[dateColumn];
     if (!dateValue) return;
     
-    const date = new Date(dateValue);
-    if (isNaN(date.getTime())) return;
+    const date = parseDate(dateValue);
+    if (!date || isNaN(date.getTime())) return;
     
     const dateKey = date.toISOString().split('T')[0];
     
