@@ -27,8 +27,8 @@ export const FilterBar = ({
   const [startOpen, setStartOpen] = useState(false);
   const [endOpen, setEndOpen] = useState(false);
 
-  const dateColumns = columns.filter(c => c.type === 'date');
-  const categoryColumns = columns.filter(c => c.type === 'category');
+  const dateColumns = columns.filter(c => c.type === 'date' && !c.isEmpty);
+  const categoryColumns = columns.filter(c => c.type === 'category' && !c.isEmpty);
   
   const hasActiveFilters = dateColumn || startDate || endDate || 
     Object.values(attributeFilters).some(v => v && v.length > 0);

@@ -75,7 +75,20 @@ export const parseExcelFile = (file) => {
 const analyzeColumns = (headers, rows) => {
   return headers.map((header, idx) => {
     const values = rows.map(row => row[idx]).filter(v => v !== undefined && v !== null && v !== '');
-    const columnType = detectColumnType(values);
+    
+    // Skip columns that are entirely empty
+    if (values.length === 0) {
+      return {
+        name: header,
+        type: 'empty',
+        uniqueValues: null,
+        hasNulls: true,
+        sampleValues: [],
+        isEmpty: true
+      };
+    }
+    
+    const columnType = detectColumnType(values, header);
     
     return {
       name: header,
@@ -90,13 +103,19 @@ const analyzeColumns = (headers, rows) => {
 /**
  * Detect the type of a column based on its values
  * @param {Array} values - Column values
+ * @param {string} header - Column header name (for hints)
  * @returns {string} - Column type: 'numeric', 'date', 'category', 'text'
  */
-const detectColumnType = (values) => {
-  if (values.length === 0) return 'text';
+const detectColumnType = (values, header = '') => {
+  if (values.length === 0) return 'empty';
   
   const sampleSize = Math.min(values.length, 100);
   const sample = values.slice(0, sampleSize);
+  const headerLower = header.toLowerCase();
+  
+  // Check header hints for dates
+  const dateKeywords = ['date', 'time', 'at', 'submitted', 'created', 'updated', 'timestamp'];
+  const isDateHeader = dateKeywords.some(kw => headerLower.includes(kw));
   
   // Check for numeric
   const numericCount = sample.filter(v => {
@@ -112,17 +131,27 @@ const detectColumnType = (values) => {
       /^\d{4}-\d{2}-\d{2}$/,
       /^\d{2}\/\d{2}\/\d{4}$/,
       /^\d{2}-\d{2}-\d{4}$/,
-      /^\d{1,2}\/\d{1,2}\/\d{2,4}$/
+      /^\d{1,2}\/\d{1,2}\/\d{2,4}$/,
+      /^\d{4}-\d{2}-\d{2}T/  // ISO format
     ];
     const str = String(v);
-    return datePatterns.some(p => p.test(str)) || !isNaN(Date.parse(str));
+    return datePatterns.some(p => p.test(str)) || (!isNaN(Date.parse(str)) && str.length > 6);
   }).length;
   
-  if (dateCount / sampleSize > 0.7) return 'date';
+  if (dateCount / sampleSize > 0.5 || (isDateHeader && dateCount > 0)) return 'date';
   
-  // Check for category (limited unique values)
+  // Check for category (limited unique values OR text with reasonable diversity)
   const uniqueValues = new Set(values);
-  if (uniqueValues.size <= 20 && uniqueValues.size < values.length * 0.5) {
+  const uniqueRatio = uniqueValues.size / values.length;
+  
+  // Consider as category if:
+  // 1. Less than 50 unique values AND less than 50% unique ratio
+  // 2. OR if it looks like a status/type/name field
+  const categoryKeywords = ['status', 'type', 'name', 'code', 'category', 'region', 'state', 'district', 'block'];
+  const isCategoryHeader = categoryKeywords.some(kw => headerLower.includes(kw));
+  
+  if ((uniqueValues.size <= 50 && uniqueRatio < 0.5) || 
+      (isCategoryHeader && uniqueValues.size <= 100)) {
     return 'category';
   }
   
@@ -184,8 +213,8 @@ export const calculateMetrics = (data, columns) => {
     format: 'number'
   });
   
-  // Calculate numeric column summaries
-  const numericColumns = columns.filter(c => c.type === 'numeric').slice(0, 3);
+  // Calculate numeric column summaries (if available)
+  const numericColumns = columns.filter(c => c.type === 'numeric' && !c.isEmpty).slice(0, 2);
   
   numericColumns.forEach(col => {
     const values = data
@@ -209,6 +238,35 @@ export const calculateMetrics = (data, columns) => {
       });
     }
   });
+  
+  // If no numeric columns, show category distributions
+  if (numericColumns.length === 0) {
+    const categoryColumns = columns.filter(c => c.type === 'category' && !c.isEmpty).slice(0, 3);
+    
+    categoryColumns.forEach(col => {
+      const uniqueValues = new Set(data.map(row => row[col.name]).filter(v => v !== null && v !== undefined));
+      metrics.push({
+        label: `Unique ${col.name}`,
+        value: uniqueValues.size,
+        format: 'number'
+      });
+    });
+  }
+  
+  // Fill remaining slots with category counts if needed
+  if (metrics.length < 4) {
+    const categoryColumns = columns.filter(c => c.type === 'category' && !c.isEmpty);
+    categoryColumns.slice(0, 4 - metrics.length).forEach(col => {
+      if (!metrics.some(m => m.label.includes(col.name))) {
+        const uniqueValues = new Set(data.map(row => row[col.name]).filter(v => v !== null && v !== undefined));
+        metrics.push({
+          label: `Unique ${col.name}`,
+          value: uniqueValues.size,
+          format: 'number'
+        });
+      }
+    });
+  }
   
   return metrics.slice(0, 6);
 };

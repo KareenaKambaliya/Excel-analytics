@@ -51,9 +51,9 @@ export const Dashboard = ({ parsedData }) => {
   useEffect(() => {
     if (!sheetData?.columns) return;
     
-    const dateCol = sheetData.columns.find(c => c.type === 'date');
-    const catCol = sheetData.columns.find(c => c.type === 'category');
-    const numCol = sheetData.columns.find(c => c.type === 'numeric');
+    const dateCol = sheetData.columns.find(c => c.type === 'date' && !c.isEmpty);
+    const catCol = sheetData.columns.find(c => c.type === 'category' && !c.isEmpty);
+    const numCol = sheetData.columns.find(c => c.type === 'numeric' && !c.isEmpty);
     
     setDateColumn(dateCol?.name || null);
     setCategoryColumn(catCol?.name || null);
@@ -100,9 +100,10 @@ export const Dashboard = ({ parsedData }) => {
     return prepareTimeSeriesData(filteredData, dateColumn, valueColumn);
   }, [filteredData, dateColumn, valueColumn]);
 
-  // Get selectable columns
-  const numericColumns = sheetData?.columns?.filter(c => c.type === 'numeric') || [];
-  const categoryColumns = sheetData?.columns?.filter(c => c.type === 'category') || [];
+  // Get selectable columns - filter out empty columns
+  const numericColumns = sheetData?.columns?.filter(c => c.type === 'numeric' && !c.isEmpty) || [];
+  const categoryColumns = sheetData?.columns?.filter(c => c.type === 'category' && !c.isEmpty) || [];
+  const allCategoryColumns = sheetData?.columns?.filter(c => (c.type === 'category' || c.type === 'text') && !c.isEmpty) || [];
 
   const handleDateRangeChange = (start, end) => {
     setStartDate(start);
@@ -187,12 +188,12 @@ export const Dashboard = ({ parsedData }) => {
           <div className="flex items-center gap-2">
             <span className="text-sm text-zinc-500">Category:</span>
             <Select value={categoryColumn || 'none'} onValueChange={(val) => setCategoryColumn(val === 'none' ? null : val)}>
-              <SelectTrigger data-testid="category-select" className="w-[160px] bg-white">
+              <SelectTrigger data-testid="category-select" className="w-[180px] bg-white">
                 <SelectValue placeholder="Select column" />
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Select column</SelectItem>
-                {categoryColumns.map(col => (
+                {allCategoryColumns.map(col => (
                   <SelectItem key={col.name} value={col.name}>{col.name}</SelectItem>
                 ))}
               </SelectContent>
@@ -201,12 +202,12 @@ export const Dashboard = ({ parsedData }) => {
           
           <div className="flex items-center gap-2">
             <span className="text-sm text-zinc-500">Value:</span>
-            <Select value={valueColumn || 'none'} onValueChange={(val) => setValueColumn(val === 'none' ? null : val)}>
-              <SelectTrigger data-testid="value-select" className="w-[160px] bg-white">
-                <SelectValue placeholder="Select column" />
+            <Select value={valueColumn || 'count'} onValueChange={(val) => setValueColumn(val === 'count' ? null : val)}>
+              <SelectTrigger data-testid="value-select" className="w-[180px] bg-white">
+                <SelectValue placeholder="Count records" />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">Select column</SelectItem>
+                <SelectItem value="count">Count (records)</SelectItem>
                 {numericColumns.map(col => (
                   <SelectItem key={col.name} value={col.name}>{col.name}</SelectItem>
                 ))}
@@ -214,6 +215,20 @@ export const Dashboard = ({ parsedData }) => {
             </Select>
           </div>
         </section>
+
+        {/* Data Quality Notice */}
+        {(!sheetData.columns.some(c => c.type === 'date' && !c.isEmpty) || 
+          !sheetData.columns.some(c => c.type === 'numeric' && !c.isEmpty)) && (
+          <section className="mb-4">
+            <div className="bg-amber-50 border border-amber-200 rounded-lg p-4 text-sm text-amber-800">
+              <strong>Data Notice:</strong> 
+              {!sheetData.columns.some(c => c.type === 'date' && !c.isEmpty) && 
+                " No date columns with data found - time series chart unavailable."}
+              {!sheetData.columns.some(c => c.type === 'numeric' && !c.isEmpty) && 
+                " No numeric columns found - using record counts for visualizations."}
+            </div>
+          </section>
+        )}
 
         {/* Charts Grid */}
         <section className="grid grid-cols-1 lg:grid-cols-2 gap-6">
